@@ -1,0 +1,7 @@
+# Add these to your .env
+
+# Default 500 = 5% slippage. Meme coins may need higher.
+DEFAULT_SLIPPAGE_BPS=500
+
+# Keep this amount for network fees when using % buy.
+KEEP_FEE_SOL=0.01
