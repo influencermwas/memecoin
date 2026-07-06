@@ -1,0 +1,10 @@
+# Add these to your existing .env
+
+# Use one long random secret. Never push your real .env to GitHub.
+WALLET_MASTER_KEY=change_this_to_a_very_long_random_secret_64_chars_minimum
+
+# Optional custom Solana RPC. Helius/QuickNode is better for production.
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+
+# Local JSON storage folder
+DATA_DIR=data
