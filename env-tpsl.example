@@ -1,0 +1,5 @@
+# Check TP/SL every 60 seconds
+TPSL_CHECK_INTERVAL_SECONDS=60
+
+# When TP or SL hits, sell this percent of token balance
+TPSL_SELL_PERCENT=100
