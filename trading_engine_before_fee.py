@@ -9,8 +9,6 @@ from solana.rpc.types import TokenAccountOpts
 from solders.keypair import Keypair
 from solders.pubkey import Pubkey
 from solders.transaction import VersionedTransaction
-from solders.message import MessageV0
-from solders.system_program import transfer, TransferParams
 
 SOL_MINT = "So11111111111111111111111111111111111111112"
 LAMPORTS_PER_SOL = 1_000_000_000
@@ -21,50 +19,6 @@ JUPITER_SWAP_URL = "https://lite-api.jup.ag/swap/v1/swap"
 
 class TradingError(Exception):
     pass
-
-
-
-def get_platform_fee_percent() -> float:
-    try:
-        return float(os.getenv("PLATFORM_FEE_PERCENT", "0"))
-    except Exception:
-        return 0.0
-
-
-def get_platform_fee_wallet() -> str:
-    return os.getenv("PLATFORM_FEE_WALLET", "").strip()
-
-
-def send_platform_fee_sol(keypair: Keypair, fee_sol: float) -> str | None:
-    fee_wallet = get_platform_fee_wallet()
-    if not fee_wallet or fee_sol <= 0:
-        return None
-
-    client = get_client()
-    lamports = sol_to_lamports(fee_sol)
-    if lamports <= 0:
-        return None
-
-    blockhash = client.get_latest_blockhash().value.blockhash
-
-    ix = transfer(
-        TransferParams(
-            from_pubkey=keypair.pubkey(),
-            to_pubkey=Pubkey.from_string(fee_wallet),
-            lamports=lamports,
-        )
-    )
-
-    msg = MessageV0.try_compile(
-        payer=keypair.pubkey(),
-        instructions=[ix],
-        address_lookup_table_accounts=[],
-        recent_blockhash=blockhash,
-    )
-
-    tx = VersionedTransaction(msg, [keypair])
-    result = client.send_raw_transaction(bytes(tx))
-    return str(result.value)
 
 
 def get_client() -> Client:
@@ -149,17 +103,7 @@ def buy_token_with_sol(
     slippage_bps: int = 500,
 ) -> Dict[str, Any]:
     public_key = str(keypair.pubkey())
-
-    fee_percent = get_platform_fee_percent()
-    fee_sol = round(sol_amount * fee_percent / 100, 9)
-    swap_sol = round(sol_amount - fee_sol, 9)
-
-    if swap_sol <= 0:
-        raise TradingError("Trade amount too small after platform fee.")
-
-    fee_signature = send_platform_fee_sol(keypair, fee_sol) if fee_sol > 0 else None
-
-    lamports = sol_to_lamports(swap_sol)
+    lamports = sol_to_lamports(sol_amount)
 
     quote = get_quote(SOL_MINT, token_mint, lamports, slippage_bps)
     swap_tx = build_swap_transaction(quote, public_key)
@@ -167,9 +111,6 @@ def buy_token_with_sol(
 
     return {
         "signature": signature,
-        "fee_signature": fee_signature,
-        "platform_fee_sol": fee_sol,
-        "swap_sol": swap_sol,
         "input_mint": SOL_MINT,
         "output_mint": token_mint,
         "sol_spent": sol_amount,
@@ -178,7 +119,6 @@ def buy_token_with_sol(
         "price_impact_pct": quote.get("priceImpactPct"),
         "quote": quote,
     }
-
 
 
 def sell_token_for_sol(
@@ -193,25 +133,16 @@ def sell_token_for_sol(
     swap_tx = build_swap_transaction(quote, public_key)
     signature = sign_and_send_swap(swap_tx, keypair)
 
-    sol_out_estimate = int(quote.get("outAmount", 0)) / LAMPORTS_PER_SOL
-
-    fee_percent = get_platform_fee_percent()
-    fee_sol = round(sol_out_estimate * fee_percent / 100, 9)
-    fee_signature = send_platform_fee_sol(keypair, fee_sol) if fee_sol > 0 else None
-
     return {
         "signature": signature,
-        "fee_signature": fee_signature,
-        "platform_fee_sol": fee_sol,
         "input_mint": token_mint,
         "output_mint": SOL_MINT,
         "raw_in_amount": quote.get("inAmount"),
         "raw_out_amount": quote.get("outAmount"),
-        "sol_out_estimate": sol_out_estimate,
+        "sol_out_estimate": int(quote.get("outAmount", 0)) / LAMPORTS_PER_SOL,
         "price_impact_pct": quote.get("priceImpactPct"),
         "quote": quote,
     }
-
 
 
 def get_token_balance_raw(owner_public_key: str, mint: str) -> int:

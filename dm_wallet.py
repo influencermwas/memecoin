@@ -31,10 +31,10 @@ def wallet_keyboard(user_id: int) -> InlineKeyboardMarkup:
     wallets = list_wallets(user_id)
     rows = []
 
-    wallet_buttons = []
     active = get_active_wallet(user_id)
     active_label = active["label"] if active else None
 
+    wallet_buttons = []
     for wallet in wallets:
         label = wallet["label"]
         title = f"✅ {label}" if label == active_label else label
@@ -46,14 +46,30 @@ def wallet_keyboard(user_id: int) -> InlineKeyboardMarkup:
     rows.extend([
         [InlineKeyboardButton("➕ Create Solana Wallet", callback_data="wallet_create")],
         [InlineKeyboardButton("📥 Import Phantom Wallet", callback_data="wallet_import")],
-        [InlineKeyboardButton("🗑 Remove Wallet", callback_data="wallet_delete_start")],
         [InlineKeyboardButton("🔄 Refresh Balance", callback_data="wallet_refresh")],
+        [InlineKeyboardButton("🏧 Withdraw SOL", callback_data="withdraw_sol")],
+        [InlineKeyboardButton("🗑 Remove Wallet", callback_data="wallet_delete_start")],
         [InlineKeyboardButton("← Back", callback_data="main_menu")],
     ])
     return InlineKeyboardMarkup(rows)
 
 
 async def start_dm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if context.args and context.args[0].startswith("buy_"):
+        ca = context.args[0].replace("buy_", "", 1)
+        context.user_data["buy_ca"] = ca
+
+        from dm_trading import buy_percent_keyboard
+
+        await update.message.reply_text(
+            "🟢 *Buy Token*\n\n"
+            f"CA:\n`{ca}`\n\n"
+            "Choose how much of your SOL wallet to use:",
+            parse_mode="Markdown",
+            reply_markup=buy_percent_keyboard(),
+        )
+        return
+
     text = (
         "🚀 *INFLUENCER MEMECOIN BOT*\n\n"
         "Channel signals continue running.\n"

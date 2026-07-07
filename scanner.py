@@ -29,7 +29,7 @@ def fetch_pair(ca):
         data = requests.get(url, timeout=20).json()
     except Exception:
         return None
-    pairs = [p for p in data.get("pairs", []) if p.get("chainId") == "solana"]
+    pairs = [p for p in (data.get("pairs") or []) if p.get("chainId") == "solana"]
     if not pairs:
         return None
     pairs.sort(key=lambda p: float((p.get("liquidity") or {}).get("usd") or 0), reverse=True)

@@ -18,6 +18,10 @@ def positions_keyboard(positions) -> InlineKeyboardMarkup:
             InlineKeyboardButton("Sell 100%", callback_data=f"sell_pct:{mint}:100"),
             InlineKeyboardButton("Set TP/SL", callback_data=f"set_risk_menu:{mint}"),
         ])
+        rows.append([
+            InlineKeyboardButton("🛡 Protect Profit", callback_data=f"pp:{mint}"),
+            InlineKeyboardButton("⚖️ SL to Entry", callback_data=f"pps:{mint}:0"),
+        ])
     rows.append([InlineKeyboardButton("← Back", callback_data="main_menu")])
     return InlineKeyboardMarkup(rows)
 

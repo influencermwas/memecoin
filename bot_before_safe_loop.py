@@ -69,25 +69,13 @@ def report_job():
     save_state(state)
 
 
-def safe_scan_once():
-    try:
-        scan_once()
-    except Exception as e:
-        print(f"[SCAN ERROR] {e}", flush=True)
-
-def safe_report_job():
-    try:
-        report_job()
-    except Exception as e:
-        print(f"[REPORT ERROR] {e}", flush=True)
-
 def main():
     print("Solana memecoin channel bot started...")
     scheduler = BackgroundScheduler(timezone="UTC")
-    scheduler.add_job(safe_scan_once, "interval", seconds=SCAN_INTERVAL_SECONDS, max_instances=1)
-    scheduler.add_job(safe_report_job, "cron", hour=0, minute=0)
+    scheduler.add_job(scan_once, "interval", seconds=SCAN_INTERVAL_SECONDS, max_instances=1)
+    scheduler.add_job(report_job, "cron", hour=0, minute=0)
     scheduler.start()
-    safe_scan_once()
+    scan_once()
     while True:
         time.sleep(60)
 

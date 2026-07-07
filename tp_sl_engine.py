@@ -62,6 +62,9 @@ async def check_position(application, user_id: int, position: Dict[str, Any]) ->
     if not mint or position.get("status") != "open":
         return
 
+    if position.get("auto_sell_failed"):
+        return
+
     market = get_token_market_data(mint)
     if not market.get("found") or not market.get("price_usd"):
         return
@@ -113,11 +116,25 @@ async def check_position(application, user_id: int, position: Dict[str, Any]) ->
         except Exception:
             pass
 
+    profit_protect = position.get("profit_protect_pct")
+    if not should_sell and profit_protect is not None:
+        try:
+            pp = float(profit_protect)
+            if pnl <= pp:
+                should_sell = True
+                reason = f"Profit protection hit +{pp:.0f}%"
+        except Exception:
+            pass
+
     if not should_sell and sl is not None:
         try:
-            if pnl <= -abs(float(sl)):
+            sl_float = float(sl)
+            if sl_float < 0 and pnl <= sl_float:
                 should_sell = True
-                reason = f"SL hit -{abs(float(sl)):.0f}%"
+                reason = f"SL hit {sl_float:.0f}%"
+            elif sl_float >= 0 and pnl <= sl_float:
+                should_sell = True
+                reason = f"Profit SL hit +{sl_float:.0f}%"
         except Exception:
             pass
 
@@ -171,13 +188,20 @@ async def check_position(application, user_id: int, position: Dict[str, Any]) ->
         )
 
     except Exception as exc:
+        update_position(user_id, mint, {
+            "auto_sell_failed": True,
+            "auto_sell_error": str(exc),
+            "auto_sell_failed_at": int(time.time()),
+        })
+
         await notify_user(
             application,
             user_id,
             "❌ *Auto Sell Failed*\n\n"
             f"Reason: *{reason}*\n"
             f"Token CA: `{mint}`\n"
-            f"Error: `{exc}`",
+            f"Error: `{exc}`\n\n"
+            "Auto-sell has been paused for this position to avoid spam.",
         )
 
 

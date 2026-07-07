@@ -30,41 +30,6 @@ def buttons(snapshot):
     return rows
 
 
-
-def smart_money_label(count):
-    try:
-        count = int(count or 0)
-    except Exception:
-        count = 0
-
-    if count <= 0:
-        return "⚪ No smart money detected"
-    if count <= 2:
-        return f"🟢 {count} wallet(s) • Low interest"
-    if count <= 5:
-        return f"🔵 {count} wallet(s) • Moderate accumulation"
-    if count <= 10:
-        return f"🟣 {count} wallet(s) • Strong accumulation"
-    return f"🟡 {count}+ wallet(s) • Heavy whale accumulation"
-
-
-def smart_money_boost(count):
-    try:
-        count = int(count or 0)
-    except Exception:
-        count = 0
-
-    if count <= 0:
-        return 0
-    if count <= 2:
-        return 2
-    if count <= 5:
-        return 5
-    if count <= 10:
-        return 8
-    return 12
-
-
 def signal_caption(snapshot, analysis):
     gem = "💎 EXCLUSIVE GEM DETECTED" if analysis["score"] >= GEM_SCORE else "🚀 SOLANA MEMECOIN SIGNAL"
     entry_low = snapshot["mc"] * 0.90
@@ -78,8 +43,7 @@ CA: <code>{ca}</code>
 
 Score: <b>{analysis['score']}% {analysis['grade']}</b>
 Trend: {analysis['trend']}
-🧠 Smart Money: {smart_money_label(analysis['smart_money_count'])}
-⭐ Smart Money Boost: +{smart_money_boost(analysis['smart_money_count'])}%
+Smart Money: {analysis['smart_money_count']} wallet signal(s)
 
 Entry MC: <b>{money(snapshot['mc'])}</b>
 Entry Zone: {money(entry_low)} – {money(entry_high)}

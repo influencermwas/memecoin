@@ -126,7 +126,7 @@ async def buy_percent_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             keypair=keypair,
             token_mint=ca,
             sol_amount=sol_amount,
-            slippage_bps=int(os.getenv("DEFAULT_SLIPPAGE_BPS", "500")),
+            slippage_bps=int(context.user_data.get("slippage_bps", os.getenv("DEFAULT_SLIPPAGE_BPS", "500"))),
         )
 
         save_position(user_id, {
@@ -183,7 +183,7 @@ async def custom_buy_sol_receive(update: Update, context: ContextTypes.DEFAULT_T
             keypair=keypair,
             token_mint=ca,
             sol_amount=sol_amount,
-            slippage_bps=int(os.getenv("DEFAULT_SLIPPAGE_BPS", "500")),
+            slippage_bps=int(context.user_data.get("slippage_bps", os.getenv("DEFAULT_SLIPPAGE_BPS", "500"))),
         )
 
         save_position(user_id, {
@@ -265,7 +265,7 @@ async def sell_percent_callback(update: Update, context: ContextTypes.DEFAULT_TY
             keypair=keypair,
             token_mint=mint,
             token_amount_raw=sell_amount,
-            slippage_bps=int(os.getenv("DEFAULT_SLIPPAGE_BPS", "500")),
+            slippage_bps=int(context.user_data.get("slippage_bps", os.getenv("DEFAULT_SLIPPAGE_BPS", "500"))),
         )
 
         if pct >= 99:
@@ -288,17 +288,31 @@ async def risk_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await query.answer()
     _, mint, tp, sl = query.data.split(":")
 
-    tp_value = None if tp == "none" else float(tp)
-    sl_value = None if sl == "none" else float(sl)
+    from positions_storage import get_positions, update_position
 
-    set_risk_orders(query.from_user.id, mint, tp_value, sl_value)
+    current = None
+    for p in get_positions(query.from_user.id):
+        if p.get("mint") == mint and p.get("status") == "open":
+            current = p
+            break
+
+    old_tp = current.get("take_profit_pct") if current else None
+    old_sl = current.get("stop_loss_pct") if current else None
+
+    tp_value = old_tp if tp == "none" else float(tp)
+    sl_value = old_sl if sl == "none" else float(sl)
+
+    update_position(query.from_user.id, mint, {
+        "take_profit_pct": tp_value,
+        "stop_loss_pct": sl_value,
+    })
 
     await query.edit_message_text(
-        "✅ TP/SL saved.\n\n"
+        "✅ *TP/SL saved*\n\n"
         f"Token: `{mint}`\n"
-        f"TP: *{tp_value or 'Not set'}%*\n"
-        f"SL: *-{sl_value or 'Not set'}%*\n\n"
-        "Next upgrade will add automatic monitoring to execute TP/SL.",
+        f"TP: *{tp_value if tp_value is not None else 'Not set'}%*\n"
+        f"SL: *-{sl_value if sl_value is not None else 'Not set'}%*\n\n"
+        "Both TP and SL can now stay active together.",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📈 Positions", callback_data="positions")]])
     )
